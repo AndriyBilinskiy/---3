@@ -136,12 +136,24 @@ def choose_the_best_move(player:int):
     field = parse_field()
     figure = parse_figure()
     moves = find_availible_moves(player, field, figure)
+    num_of_stars = 0
+    y_sum = 0
+    x_sum = 0
+    for i in range(len(figure)):
+        row = figure[i]
+        for j in range(len(row)):
+            if row[j] == '*':
+                num_of_stars += 1
+                y_sum += i
+                x_sum += j
+    y_center = y_sum / num_of_stars
+    x_center = x_sum / num_of_stars
     if len(moves) == 0:
         return -1 
     distances = []
     for move in moves:
-        move_y = move[0]
-        move_x = move[1]
+        move_y = move[0] + y_center
+        move_x = move[1] + x_center
         distance_to_enemy = 0
         for i in range(len(field)):
             row = field[i]
