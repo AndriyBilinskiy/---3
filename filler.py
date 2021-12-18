@@ -4,16 +4,19 @@ from logging import DEBUG, debug, getLogger
 import logging
 
 getLogger().setLevel(DEBUG)
-logging.basicConfig(filename="test.log", level = logging.DEBUG, 
+logging.basicConfig(filename="test.log",level = logging.DEBUG, 
 format='%(asctime)s:%(funcName)s:%(message)s')
+
+class BreakLoop( Exception ):
+    pass
 
 def parse_field_info():
     """
     Parse the info about the field.
     Plateau 15 17:
     """
-
     inp = input()
+
     debug(f"Description of the field: {inp}")
     inp = inp.split()
     return [inp[1],inp[2][:-1]]
@@ -44,6 +47,7 @@ def parse_field():
     """
     field_height =  int(parse_field_info()[0])
     field = []
+    debug("Field:")
     for _ in range(field_height + 1):
         line = input().lower()
         line = line.split()[-1]
@@ -51,8 +55,9 @@ def parse_field():
         for char in line:
             row.append(char)
         field.append(row)
-    debug(f"Field: {field}")
-    return field
+        debug(row)
+    
+    return field[1:]
 
 
 def parse_figure():
@@ -69,22 +74,28 @@ def parse_figure():
     debug(f"Piece: {param}")
     height = int(param.split()[1])
     figure = []
+    debug("Figure:")
     for _ in range(height):
-        figure.append(input())
-    debug(f"Figure: {figure}")
+        row  = input()
+        lst = []
+        for i in row:
+            lst.append(i)
+        figure.append(lst)
+        debug(lst)
+    
     return figure
 
 
-def find_availible_moves(player:int):
+def find_availible_moves(player:int, field, figure):
     """
     This function finds all moves that are allowed by the rules.
     """
+    debug(player)
     if player == 1:
         my_char,enemy_char = 'o','x'
     else:
         enemy_char, my_char = 'o','x'
-    field = parse_field()
-    figure = parse_figure()
+    debug(my_char)
     moves = []
     for i in range(len(field)):
         row = field[i]
@@ -96,39 +107,60 @@ def find_availible_moves(player:int):
                     for n in range (len(fig_row)):
                         fig_char = fig_row[n]
                         field_char = field[i+k][j+n]
-                        if fig_char == my_char:
-                            assert field_char != enemy_char
+                        if fig_char == '*':
+                            if field_char == enemy_char:
+                                raise BreakLoop
                             if field_char == my_char:
-                                intersection_with_my_char_found = True
-            except IndexError or AssertionError:
+                                if not intersection_with_my_char_found:
+                                    intersection_with_my_char_found = True
+                                else:
+                                    raise BreakLoop
+            except BreakLoop:
+                continue
+            except IndexError:
                 continue
             if intersection_with_my_char_found:
-                moves.append(tuple(i,j))
-#TODO
-    #return moves
+                moves.append((i,j))
+    debug(f"Availible moves {moves}")
+    return moves
 
 def choose_the_best_move(player:int):
     """
     This function chooses the best move out of the list of possible moves. 
+    It does it by finding the aproximate closest move to the enemy.
     """
-    moves = find_availible_moves()
-    debug(f"Availible moves {moves}")
-    if moves == -1:
-        return -1
-#TODO
-    # return best
+    if player == 1:
+        enemy_char = 'x'
+    else:
+        enemy_char = 'o'
+    field = parse_field()
+    figure = parse_figure()
+    moves = find_availible_moves(player, field, figure)
+    if len(moves) == 0:
+        return -1 
+    distances = []
+    for move in moves:
+        move_y = move[0]
+        move_x = move[1]
+        distance_to_enemy = 0
+        for i in range(len(field)):
+            row = field[i]
+            for j in range(len(row)):
+                if row[j] == enemy_char:
+                    distance_to_enemy += abs(move_y - i) + abs(move_x - j)
+        distances.append((move, distance_to_enemy))
+    debug(distances)
+    return min(distances, key = lambda x: x[1])[0]
 
 
 def step(player:int):
     """
     This function performs a step.
     """
-    move = None
-    parse_field_info()
     move = choose_the_best_move(player)
     if move == -1:
         return -1
-
+    return move
 
 def play(player:int):
     """
@@ -136,9 +168,10 @@ def play(player:int):
     """
     while True:
         move = step(player)
+        debug(move)
         if move == -1:
             debug("No moves are availible.")
-            print("No moves are availible.")
+            move = (0,0)
         print(*move)
 
 
@@ -155,7 +188,7 @@ def main():
     """
     The main function.
     """
-    player = parse_player
+    player = parse_player()
     try:
         play(player)
     except EOFError:
